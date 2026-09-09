@@ -4,7 +4,7 @@ Source: `multiplayer-agent-sdk-build-plan.md` (spacex-eval verdict: Pivot, Sept 
 
 ## Status (updated as phases complete)
 
-**Phase 0 ✅ · Phase 1 ✅ · Phase 2 ✅ · Phase 3 🔶 in progress · Phase 4 ⬜ not started**
+**Phase 0 ✅ · Phase 1 ✅ · Phase 2 ✅ · Phase 3 ✅ · Phase 4 ⬜ not started**
 
 Repo: `https://github.com/nlehnhof/multiplayer-sdk.git`, branch `master`. Working contract and current file-by-file structure live in `CLAUDE.md` at repo root — this doc stays the narrative log of *how* the build actually went (what deviated from plan, what broke, what was learned), `CLAUDE.md` is the current-state reference.
 
@@ -62,9 +62,11 @@ Run these either as Cowork `Agent` calls with `isolation: "worktree"` (each gets
   3. (Found later, same root cause as #2's category) `trivia`'s smoke test used a hardcoded `roomId`; a second run against the same long-lived dev server reconnected to a room already left `'finished'` by the first run. Fixed by timestamping the room id, matching `card-game`'s existing pattern.
 - Lesson for future phases: **a subagent's "tests pass" is a claim, not a verification** — always re-run tests and any live smoke test yourself after merging, on the actual merged `master` state.
 
-**Phase 3 — Testing & review. 🔶 In progress.**
+**Phase 3 — Testing & review. ✅ Done.**
 `engineering:testing-strategy` to define coverage (unit tests per adapter against a mock backend, integration test per example game). `engineering:code-review` on each package before merging. Run tests for real — don't mark this done on a subagent's say-so.
-- Coverage already in place from Phases 1-2: unit tests per package/example (vitest) + a live smoke test per game/adapter against a real `partykit dev` server. This phase is the *review* pass on top of that — correctness and simplification review across the codebase — plus deciding whether anything found needs a follow-up fix before Phase 4.
+- Coverage already in place from Phases 1-2: unit tests per package/example (vitest) + a live smoke test per game/adapter against a real `partykit dev` server.
+- Ran a high-effort `/code-review` pass over `packages/` and `examples/`. One real finding: `adapter-partykit`'s `#broadcastSync()` (the per-connection loop ADR 0002 introduced) wasn't failure-isolated — a throwing `toClientView` for one player could abort the loop mid-iteration (leaving other connections on stale state) and, because it ran inside `onMessage`'s action try/catch, could misreport a successful action as rejected to the acting player.
+- Fixed: each connection's view/serialize/send in `#broadcastSync` is now independently try/caught, and it's called outside the action try/catch so it structurally can't be mistaken for an action failure. New regression test proves a later-iterated player's sync survives an earlier player's broken view. Re-verified: 15/15 adapter tests, 65/65 full workspace, and a live smoke test, all after the fix.
 
 **Phase 4 — Launch prep. ⬜ Not started.**
 `engineering:deploy-checklist` before `npm publish`. Draft the marketplace submission (Claude Code plugin directory PR, Cursor Marketplace listing) content here, but per the build plan, the actual submission review process and creator outreach are things you do by hand, not Claude.
