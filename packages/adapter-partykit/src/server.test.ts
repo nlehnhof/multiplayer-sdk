@@ -157,4 +157,40 @@ describe('createPartyKitServer', () => {
     expect(lastSync(connA).state).toEqual({ mine: 'secret-for-a', othersCount: 1 });
     expect(lastSync(connB).state).toEqual({ mine: 'secret-for-b', othersCount: 1 });
   });
+
+  it("a toClientView that throws for one player doesn't block earlier-iterated players' sync or misreport the actor's action (regression)", () => {
+    // 'broken' is connected (and thus iterated) before 'ok', so this proves
+    // a later-in-iteration failure can't have retroactively affected 'ok' —
+    // and that onMessage's try/catch (which guards engine.action, not the
+    // broadcast) never mistakes a downstream view failure for a rejected
+    // action.
+    const def: RoomDefinition<CounterState, CounterAction, unknown, unknown> = {
+      ...definition(),
+      toClientView: (state, viewerId) => {
+        if (viewerId === 'broken') throw new Error('view exploded');
+        return state;
+      },
+    };
+    const Server = createPartyKitServer(def);
+    const room = fakeRoom();
+    const server = new Server(room as never);
+    const brokenConn = fakeConnection(room, 'conn-broken');
+    const okConn = fakeConnection(room, 'conn-ok');
+    server.onConnect!(brokenConn as never, fakeCtx('broken') as never);
+    server.onConnect!(okConn as never, fakeCtx('ok') as never);
+    brokenConn.send.mockClear();
+    okConn.send.mockClear();
+
+    server.onMessage!(JSON.stringify({ type: 'action', action: { type: 'increment' } }), okConn as never);
+
+    expect(JSON.parse(okConn.send.mock.calls[0]![0] as string)).toEqual({
+      type: 'sync',
+      state: { count: 1 },
+      presence: expect.any(Array),
+    });
+    expect(JSON.parse(brokenConn.send.mock.calls[0]![0] as string)).toEqual({
+      type: 'error',
+      message: 'view exploded',
+    });
+  });
 });

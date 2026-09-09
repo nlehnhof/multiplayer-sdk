@@ -63,10 +63,11 @@ export function createPartyKitServer<TState, TAction, TMeta = unknown, TView = T
 
       try {
         this.#engine.action(player.id, parsed.action);
-        this.#broadcastSync();
       } catch (err) {
         sender.send(JSON.stringify(toErrorMessage(err)));
+        return;
       }
+      this.#broadcastSync();
     }
 
     onClose(connection: Party.Connection): void {
@@ -80,6 +81,17 @@ export function createPartyKitServer<TState, TAction, TMeta = unknown, TView = T
     // Per-connection sends rather than one room.broadcast(): each player may
     // see a different projection of state (ADR 0002). Presence is not
     // per-player filtered, so it's identical across every message we send.
+    //
+    // Each connection's view/serialize/send is independently try/caught: a
+    // buggy toClientView (easy mistake in agent-generated game code, e.g.
+    // assuming a key exists for every viewer) or a non-serializable value
+    // must not (a) stop other players from getting their correct sync, or
+    // (b) get misreported to whichever player happens to trigger the next
+    // action as "your action failed" when it didn't — this method is called
+    // strictly after the state mutation that triggered it already
+    // succeeded, so it never throws itself; a broken view only affects the
+    // one connection whose view computation failed, via an 'error' message
+    // to *that* connection.
     #broadcastSync(): void {
       const state = this.#engine.currentState;
       const presence = this.#engine.presence;
@@ -88,9 +100,17 @@ export function createPartyKitServer<TState, TAction, TMeta = unknown, TView = T
         const connection = this.room.getConnection(connectionId);
         if (!connection) continue;
 
-        const view = definition.toClientView ? definition.toClientView(state, player.id) : (state as unknown as TView);
-        const message: SyncMessage<TView, TMeta> = { type: 'sync', state: view, presence };
-        connection.send(JSON.stringify(message));
+        try {
+          const view = definition.toClientView ? definition.toClientView(state, player.id) : (state as unknown as TView);
+          const message: SyncMessage<TView, TMeta> = { type: 'sync', state: view, presence };
+          connection.send(JSON.stringify(message));
+        } catch (err) {
+          try {
+            connection.send(JSON.stringify(toErrorMessage(err)));
+          } catch {
+            // Connection is unusable; nothing more to do for this one.
+          }
+        }
       }
     }
   };
