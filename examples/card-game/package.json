@@ -1,0 +1,21 @@
+{
+  "name": "card-game-example",
+  "private": true,
+  "version": "0.0.1",
+  "description": "2-player War reference game built on the Multiplayer Agent SDK.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "smoke:server": "partykit dev party/server.ts --port 2001",
+    "smoke:play": "node play.mjs"
+  },
+  "dependencies": {
+    "@multiplayer-agent-sdk/core": "0.0.1",
+    "@multiplayer-agent-sdk/adapter-partykit": "0.0.1"
+  },
+  "devDependencies": {
+    "partykit": "^0.0.115"
+  }
+}
