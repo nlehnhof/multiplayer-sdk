@@ -1,0 +1,15 @@
+{
+  "name": "@multiplayer-agent-sdk/core",
+  "version": "0.0.1",
+  "description": "Backend-agnostic types and room engine for the Multiplayer Agent SDK.",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  }
+}

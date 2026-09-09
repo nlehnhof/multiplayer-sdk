@@ -1,0 +1,20 @@
+{
+  "name": "multiplayer-agent-sdk",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Add real-time multiplayer to an existing game via a swappable realtime-backend adapter, built for AI coding agents.",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.0",
+    "tsup": "^8.5.1"
+  }
+}
