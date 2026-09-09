@@ -1,0 +1,13 @@
+{
+  "name": "multiplayer-agent-sdk",
+  "version": "0.0.1",
+  "description": "Add real-time multiplayer to an existing game via the Multiplayer Agent SDK's swappable realtime-backend adapters (PartyKit by default).",
+  "author": {
+    "name": "nlehnhof"
+  },
+  "homepage": "https://github.com/nlehnhof/multiplayer-sdk",
+  "repository": "https://github.com/nlehnhof/multiplayer-sdk",
+  "license": "MIT",
+  "keywords": ["multiplayer", "realtime", "partykit", "game-dev", "websocket"]
+}
+
