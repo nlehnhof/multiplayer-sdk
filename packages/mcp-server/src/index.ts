@@ -42,9 +42,12 @@ export function listAdapters(): AdapterInfo[] {
 /**
  * Backing data for the `get_room_definition_guide` tool. Returns markdown
  * documenting the frozen `RoomDefinition`/`PlayerInfo`/`RoomOptions` contract
- * (see adr/0001-adapter-interface.md and packages/core/src/types.ts — copied
- * verbatim below, not paraphrased) plus a minimal worked example, so a
- * coding agent can write a `RoomDefinition` without guessing the shape.
+ * (see adr/0001-adapter-interface.md, adr/0002-per-player-views.md, and
+ * packages/core/src/types.ts — copied verbatim below, not paraphrased) plus
+ * a minimal worked example, so a coding agent can write a `RoomDefinition`
+ * without guessing the shape. Keep this in sync whenever the core types or
+ * an ADR changes the contract — this tool exists specifically so an agent
+ * never has to guess, so a stale guide defeats its purpose.
  */
 export function getRoomDefinitionGuide(): string {
   return `# RoomDefinition guide
@@ -75,18 +78,54 @@ export interface RoomOptions {
  * Backend-agnostic game logic. Written once per game; never imports an adapter.
  * All hooks are pure: given state + input, return the next state (throw to reject).
  */
-export interface RoomDefinition<TState, TAction, TMeta = unknown> {
+export interface RoomDefinition<TState, TAction, TMeta = unknown, TView = TState> {
   createState(): TState;
   onJoin(state: TState, player: PlayerInfo<TMeta>): TState;
   onLeave(state: TState, player: PlayerInfo<TMeta>): TState;
   onAction(state: TState, action: TAction, player: PlayerInfo<TMeta>): TState;
   options?: RoomOptions;
+  /**
+   * Optional per-player projection of the authoritative state, computed
+   * fresh every time state is broadcast. Omit it for a fully-public game —
+   * the adapter then sends the raw TState to everyone. Required for any
+   * game with hidden information (a card game's opponent hands, a trivia
+   * game's not-yet-revealed answers) — without it, every connected client
+   * sees the exact same state, including things other players shouldn't.
+   */
+  toClientView?(state: TState, viewerId: string): TView;
 }
 \`\`\`
 
 \`TState\` and \`TAction\` **must be JSON-serializable** — no functions, class
 instances, \`Map\`/\`Set\`. This is required for every backend adapter,
 including the (post-MVP) Supabase adapter.
+
+## Hiding information per player
+
+By default every client gets the identical state — fine for a fully-public
+game (tic-tac-toe), wrong for almost anything else. Add \`toClientView\` to
+redact per viewer:
+
+\`\`\`typescript
+// A card game: show your own hand, only a count for everyone else's.
+toClientView: (state, viewerId) => ({
+  myHand: state.hands[viewerId],
+  handCounts: Object.fromEntries(
+    Object.entries(state.hands).map(([id, hand]) => [id, hand.length])
+  ),
+}),
+\`\`\`
+
+\`\`\`typescript
+// A trivia game: hide answer values until everyone's answered, but let
+// everyone see WHO has answered (for a "waiting on 2 more" UI).
+toClientView: (state, viewerId) => ({
+  answeredPlayerIds: Object.keys(state.answers),
+  answers: state.phase === 'answering'
+    ? { [viewerId]: state.answers[viewerId] }
+    : state.answers,
+}),
+\`\`\`
 
 ## Minimal example: a counter room
 
@@ -134,7 +173,7 @@ for the exact call shape.
 
 const server = new McpServer({
   name: 'multiplayer-agent-sdk-mcp',
-  version: '0.0.1',
+  version: '0.1.0',
 });
 
 server.registerTool(

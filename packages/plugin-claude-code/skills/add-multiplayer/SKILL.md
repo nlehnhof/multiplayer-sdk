@@ -1,7 +1,7 @@
 ---
 name: add-multiplayer
-description: Use when adding real-time multiplayer to an existing single-player or local-state game (card games, trivia, tic-tac-toe, 2-6 player casual games) using the Multiplayer Agent SDK. Covers writing a RoomDefinition and wiring it to a realtime backend adapter (PartyKit by default).
-version: 0.0.1
+description: Use when adding real-time multiplayer to an existing single-player or local-state game (card games, trivia, tic-tac-toe, 2-6 player casual games) using the Multiplayer Agent SDK. Covers writing a RoomDefinition, hiding per-player information with toClientView, and wiring it to a realtime backend adapter (PartyKit by default).
+version: 0.1.0
 ---
 
 # Add multiplayer to a game with the Multiplayer Agent SDK
@@ -30,16 +30,17 @@ backend adapters are actually available — at MVP, only `partykit` is; the
 
 ## Step 2: Write one `RoomDefinition` for the game's rules
 
-A `RoomDefinition<TState, TAction, TMeta>` is server-authoritative,
+A `RoomDefinition<TState, TAction, TMeta, TView>` is server-authoritative,
 reducer-shaped game logic, written once, with **no adapter imports**:
 
 ```typescript
-export interface RoomDefinition<TState, TAction, TMeta = unknown> {
+export interface RoomDefinition<TState, TAction, TMeta = unknown, TView = TState> {
   createState(): TState;
   onJoin(state: TState, player: PlayerInfo<TMeta>): TState;   // throw to reject the join
   onLeave(state: TState, player: PlayerInfo<TMeta>): TState;
   onAction(state: TState, action: TAction, player: PlayerInfo<TMeta>): TState; // throw to reject the action
   options?: RoomOptions; // maxPlayers, idleTimeoutMs
+  toClientView?(state: TState, viewerId: string): TView; // see Step 2b
 }
 ```
 
@@ -55,6 +56,28 @@ shape:
 **Hard constraint:** `TState` and `TAction` must be JSON-serializable — no
 functions, class instances, `Map`, or `Set`. This is required by every
 backend adapter, not just an implementation detail of one.
+
+## Step 2b: Hide information per player, if the game needs it
+
+**Every client sees the identical state unless you add `toClientView`.**
+Fine for a fully-public game (tic-tac-toe: the whole board is meant to be
+visible to both players); wrong for almost anything else — a card game
+showing every hand, or a trivia game showing answers before reveal, isn't
+really hiding anything. If the game you're porting has hidden information,
+add:
+
+```typescript
+toClientView: (state, viewerId) => ({
+  myHand: state.hands[viewerId],
+  handCounts: Object.fromEntries(
+    Object.entries(state.hands).map(([id, hand]) => [id, hand.length])
+  ),
+}),
+```
+
+The adapter calls this once per connection on every broadcast and sends
+each player only what it returns — the raw `state` never reaches a client
+directly once this is defined.
 
 ## Step 3: Wire it to a backend adapter
 

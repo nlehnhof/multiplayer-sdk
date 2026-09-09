@@ -25,12 +25,13 @@ Do not guess this shape from memory:
 ## 2. Write one `RoomDefinition` for the game's rules
 
 ```typescript
-export interface RoomDefinition<TState, TAction, TMeta = unknown> {
+export interface RoomDefinition<TState, TAction, TMeta = unknown, TView = TState> {
   createState(): TState;
   onJoin(state: TState, player: PlayerInfo<TMeta>): TState;   // throw to reject the join
   onLeave(state: TState, player: PlayerInfo<TMeta>): TState;
   onAction(state: TState, action: TAction, player: PlayerInfo<TMeta>): TState; // throw to reject the action
   options?: RoomOptions; // maxPlayers, idleTimeoutMs
+  toClientView?(state: TState, viewerId: string): TView; // see step 2b
 }
 ```
 
@@ -41,6 +42,24 @@ an invalid join or illegal move.
 
 **Hard constraint:** `TState` and `TAction` must be JSON-serializable — no
 functions, class instances, `Map`, or `Set`.
+
+## 2b. Hide information per player, if the game needs it
+
+Every client sees identical state unless you add `toClientView` — fine for
+a fully-public game (tic-tac-toe), wrong for a card game or a trivia game
+with unrevealed answers. If the game has hidden information:
+
+```typescript
+toClientView: (state, viewerId) => ({
+  myHand: state.hands[viewerId],
+  handCounts: Object.fromEntries(
+    Object.entries(state.hands).map(([id, hand]) => [id, hand.length])
+  ),
+}),
+```
+
+Called once per connection on every broadcast; each player receives only
+what it returns, never the raw `state`, once it's defined.
 
 ## 3. Wire it to `@multiplayer-agent-sdk/adapter-partykit`
 

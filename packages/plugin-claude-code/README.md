@@ -67,6 +67,16 @@ docs. Based on that:
   generic plugin schema) were not reviewed here — that's the separate build
   plan checklist item assigned to a human.
 
+## Marketplace listing copy (draft)
+
+For the eventual `claude-plugins-official` PR — draft only, not submitted:
+
+- **Name:** `multiplayer-agent-sdk`
+- **One-line description:** Add real-time multiplayer to an existing game via a swappable realtime-backend adapter (PartyKit by default) — write one `RoomDefinition`, no networking code.
+- **Category:** Game development
+- **Keywords:** multiplayer, realtime, game-dev, websocket, partykit
+- **Longer description:** Turns local-state game logic into a multiplayer room by wrapping an existing realtime backend instead of hosting infrastructure. Targets 2-6 player turn-based/casual games (card games, trivia, tic-tac-toe, party games) built by AI coding agents. Includes per-player state views for hidden information (opponent hands, unrevealed answers) and three complete reference games.
+
 ## Trying it locally
 
 Claude Code discovers plugins added via its plugin/marketplace commands, or

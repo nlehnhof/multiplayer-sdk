@@ -1,6 +1,6 @@
 {
   "name": "multiplayer-agent-sdk",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Add real-time multiplayer to an existing game via the Multiplayer Agent SDK's swappable realtime-backend adapters (PartyKit by default).",
   "author": {
     "name": "nlehnhof"

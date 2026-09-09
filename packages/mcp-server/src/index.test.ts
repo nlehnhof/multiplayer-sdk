@@ -27,11 +27,18 @@ describe('listAdapters', () => {
 describe('getRoomDefinitionGuide', () => {
   it('documents the RoomDefinition contract', () => {
     const guide = getRoomDefinitionGuide();
-    expect(guide).toContain('interface RoomDefinition<TState, TAction, TMeta = unknown>');
+    expect(guide).toContain('interface RoomDefinition<TState, TAction, TMeta = unknown, TView = TState>');
     expect(guide).toContain('createState(): TState');
     expect(guide).toContain('onJoin(state: TState, player: PlayerInfo<TMeta>): TState');
     expect(guide).toContain('onLeave(state: TState, player: PlayerInfo<TMeta>): TState');
     expect(guide).toContain('onAction(state: TState, action: TAction, player: PlayerInfo<TMeta>): TState');
+  });
+
+  it('documents toClientView for per-player privacy (ADR 0002)', () => {
+    const guide = getRoomDefinitionGuide();
+    expect(guide).toContain('toClientView');
+    expect(guide).toContain('viewerId');
+    expect(guide).toContain('handCounts');
   });
 
   it('documents PlayerInfo and RoomOptions', () => {

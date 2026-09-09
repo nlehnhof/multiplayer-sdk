@@ -60,3 +60,12 @@ on memory, since this format has changed before. Based on that:
   against.
 - Cursor's Marketplace / cursor.directory submission requirements (as
   opposed to the raw `.mdc` rule format) were not researched here.
+
+## Marketplace listing copy (draft)
+
+For the eventual Cursor Marketplace / cursor.directory submission — draft only, not submitted:
+
+- **Name:** Multiplayer Agent SDK
+- **One-line description:** Add real-time multiplayer to an existing game via a swappable realtime-backend adapter (PartyKit by default) — write one `RoomDefinition`, no networking code.
+- **Tags:** multiplayer, realtime, game-dev, websocket, partykit
+- **Longer description:** Turns local-state game logic into a multiplayer room by wrapping an existing realtime backend instead of hosting infrastructure. Targets 2-6 player turn-based/casual games (card games, trivia, tic-tac-toe, party games). Includes per-player state views for hidden information (opponent hands, unrevealed answers) and three complete reference games.
