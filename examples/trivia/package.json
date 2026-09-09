@@ -1,0 +1,21 @@
+{
+  "name": "trivia-example",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Multi-round trivia reference game for the Multiplayer Agent SDK.",
+  "type": "module",
+  "scripts": {
+    "build": "tsup src/questions.ts --format esm --dts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "smoke:server": "partykit dev party/server.ts --port 2002",
+    "smoke:play": "node play.mjs"
+  },
+  "dependencies": {
+    "@multiplayer-agent-sdk/core": "0.0.1",
+    "@multiplayer-agent-sdk/adapter-partykit": "0.0.1"
+  },
+  "devDependencies": {
+    "partykit": "^0.0.115"
+  }
+}
