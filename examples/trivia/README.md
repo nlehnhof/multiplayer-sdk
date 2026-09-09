@@ -13,17 +13,16 @@ A multi-round trivia game built on `@multiplayer-agent-sdk/core` and the PartyKi
 See `src/questions.ts` for the question bank and `src/room.ts` for the `RoomDefinition`
 (state shape, `onJoin`/`onLeave`/`onAction`).
 
-## Known limitation: answers are visible before reveal
+## Answers are private until reveal
 
-The v1 adapter interface (`adr/0001-adapter-interface.md`) broadcasts one identical
-`TState` object to every connected client — there is no per-player private view (see
-that ADR's ["Non-goals (MVP)"](../../adr/0001-adapter-interface.md#non-goals-mvp)
-section). That means a submitted answer is technically present in `state.answers` as
-soon as any client submits it, not just once `phase` flips to `'reveal'`. A well-behaved
-UI for this game should simply not render other players' entries in `answers` until
-`phase === 'reveal'` — but a modified/malicious client could inspect the raw state and
-see answers early. This is a known MVP limitation of the adapter interface, not something
-this example works around.
+`RoomDefinition.toClientView` (see `src/room.ts`) gives each client a `TriviaView`, not
+the raw `TriviaState`: `answeredPlayerIds` publicly shows *who* has answered the current
+question (so a UI can say "waiting on 2 more players"), but `answers` only contains your
+own submission while `phase === 'answering'` — everyone else's choice is withheld until
+the round moves to `'reveal'`, at which point `answers` contains everyone's. `scores` and
+`players` are always public. See
+[`adr/0002-per-player-views.md`](../../adr/0002-per-player-views.md), which this example
+was one of two motivating cases for (alongside `examples/card-game`'s hidden hands).
 
 ## Running the tests
 

@@ -12,9 +12,13 @@ import { connectPartyKitClient } from '@multiplayer-agent-sdk/adapter-partykit';
 import { questions } from './dist/questions.js';
 
 const host = process.env.PARTYKIT_HOST ?? '127.0.0.1:2002';
+// Unique per run: partykit dev persists room state across script invocations
+// against the same server, so a fixed id would reconnect to a room already
+// left 'finished' by a prior run instead of a fresh one.
+const roomId = `trivia-play-room-${Date.now()}`;
 
 function connect(playerId) {
-  return connectPartyKitClient({ host, roomId: 'trivia-play-room', player: { id: playerId } });
+  return connectPartyKitClient({ host, roomId, player: { id: playerId } });
 }
 
 /** Resolves once `conn.state` satisfies `predicate` (now, or on a future sync). */
@@ -57,15 +61,25 @@ async function main() {
   for (let i = 0; i < questions.length; i++) {
     const correctIndex = questions[i].correctIndex;
 
+    // Alice answers first. Bob should see *that* she answered (public) but
+    // not *what* she answered (private until reveal) — proves ADR 0002's
+    // per-player view actually holds over a real connection, not just in a
+    // mocked unit test.
+    const bobSeesAliceAnswered = waitFor(bob, (s) => s.answeredPlayerIds.includes('alice'));
+    alice.send({ type: 'answer', choiceIndex: correctIndex });
+    await bobSeesAliceAnswered;
+    assertEqual(bob.state.phase, 'answering', `question ${i}: still answering with one player left`);
+    assertEqual(bob.state.answers.alice, undefined, `question ${i}: bob must not see alice's answer before reveal`);
+
     const aliceSeesReveal = waitFor(alice, (s) => s.phase === 'reveal' && s.questionIndex === i);
     const bobSeesReveal = waitFor(bob, (s) => s.phase === 'reveal' && s.questionIndex === i);
 
-    alice.send({ type: 'answer', choiceIndex: correctIndex });
     bob.send({ type: 'answer', choiceIndex: correctIndex });
 
     await Promise.all([aliceSeesReveal, bobSeesReveal]);
     assertEqual(alice.state.scores.alice, i + 1, `alice score after question ${i}`);
     assertEqual(alice.state.scores.bob, i + 1, `bob score after question ${i} (seen by alice)`);
+    assertEqual(bob.state.answers.alice, correctIndex, `question ${i}: alice's answer becomes visible to bob at reveal`);
     console.log(`question ${i}: both players answered correctly, scores now`, alice.state.scores);
 
     const isLast = i === questions.length - 1;

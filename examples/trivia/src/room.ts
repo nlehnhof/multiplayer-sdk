@@ -14,13 +14,28 @@ export interface TriviaState {
 export type TriviaAction = { type: 'answer'; choiceIndex: number } | { type: 'next' };
 
 /**
- * Multi-round trivia game. Server-authoritative: the reducer is the only
- * place scores change, and every connected client sees the same `TState`
- * (see adr/0001-adapter-interface.md's non-goals — no per-player private
- * view yet, so submitted answers are technically visible to every client as
- * soon as they're submitted, not just at reveal; see this example's README).
+ * What a client actually receives (ADR 0002): whether the *other* players
+ * have answered is public (builds suspense — "waiting on 2 more players"),
+ * but what they answered is private until `phase` leaves 'answering'. Your
+ * own answer is always visible to you.
  */
-export const roomDefinition: RoomDefinition<TriviaState, TriviaAction> = {
+export interface TriviaView {
+  questionIndex: number;
+  phase: TriviaState['phase'];
+  /** Player ids who have submitted an answer to the current question. */
+  answeredPlayerIds: string[];
+  /** Choice values — only for the viewer's own id while phase is 'answering'; everyone's once revealed. */
+  answers: Record<string, number>;
+  scores: Record<string, number>;
+  players: string[];
+}
+
+/**
+ * Multi-round trivia game. Server-authoritative: the reducer is the only
+ * place scores change. See `toClientView` below for what's public vs.
+ * private, and adr/0002-per-player-views.md.
+ */
+export const roomDefinition: RoomDefinition<TriviaState, TriviaAction, unknown, TriviaView> = {
   createState: () => ({
     questionIndex: 0,
     phase: 'answering',
@@ -77,5 +92,21 @@ export const roomDefinition: RoomDefinition<TriviaState, TriviaAction> = {
       return { ...state, questionIndex: nextIndex, answers: {}, phase: 'answering' };
     }
     return { ...state, phase: 'finished' };
+  },
+
+  toClientView(state: TriviaState, viewerId: string): TriviaView {
+    const revealed = state.phase !== 'answering';
+    const answers: Record<string, number> = {};
+    for (const [id, choice] of Object.entries(state.answers)) {
+      if (revealed || id === viewerId) answers[id] = choice;
+    }
+    return {
+      questionIndex: state.questionIndex,
+      phase: state.phase,
+      answeredPlayerIds: Object.keys(state.answers),
+      answers,
+      scores: state.scores,
+      players: state.players,
+    };
   },
 };

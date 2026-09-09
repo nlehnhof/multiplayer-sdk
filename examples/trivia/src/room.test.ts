@@ -94,3 +94,50 @@ describe('trivia room', () => {
     expect(engine.currentState.scores.p1).toBe(questions.length);
   });
 });
+
+describe('trivia room — toClientView (ADR 0002)', () => {
+  it("hides other players' answers while the question is still open", () => {
+    const engine = newEngine();
+    engine.join(player('p1'));
+    engine.join(player('p2'));
+    engine.action('p1', { type: 'answer', choiceIndex: 2 });
+
+    const viewForP1 = roomDefinition.toClientView!(engine.currentState, 'p1');
+    const viewForP2 = roomDefinition.toClientView!(engine.currentState, 'p2');
+
+    expect(viewForP1.phase).toBe('answering');
+    expect(viewForP1.answers).toEqual({ p1: 2 });
+    expect(viewForP2.answers).toEqual({});
+  });
+
+  it("publicly shows who has answered even though the value stays hidden", () => {
+    const engine = newEngine();
+    engine.join(player('p1'));
+    engine.join(player('p2'));
+    engine.action('p1', { type: 'answer', choiceIndex: 2 });
+
+    const viewForP2 = roomDefinition.toClientView!(engine.currentState, 'p2');
+    expect(viewForP2.answeredPlayerIds).toEqual(['p1']);
+    expect(viewForP2.answers.p1).toBeUndefined();
+  });
+
+  it('reveals every answer once the round moves past answering', () => {
+    const engine = newEngine();
+    engine.join(player('p1'));
+    engine.join(player('p2'));
+    engine.action('p1', { type: 'answer', choiceIndex: 1 });
+    engine.action('p2', { type: 'answer', choiceIndex: 3 });
+    expect(engine.currentState.phase).toBe('reveal');
+
+    const viewForP1 = roomDefinition.toClientView!(engine.currentState, 'p1');
+    expect(viewForP1.answers).toEqual({ p1: 1, p2: 3 });
+  });
+
+  it('scores and player list are always public', () => {
+    const engine = newEngine();
+    engine.join(player('p1'));
+    const view = roomDefinition.toClientView!(engine.currentState, 'p1');
+    expect(view.players).toEqual(['p1']);
+    expect(view.scores).toEqual({ p1: 0 });
+  });
+});
