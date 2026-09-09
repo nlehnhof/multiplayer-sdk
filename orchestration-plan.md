@@ -4,7 +4,7 @@ Source: `multiplayer-agent-sdk-build-plan.md` (spacex-eval verdict: Pivot, Sept 
 
 ## Status (updated as phases complete)
 
-**Phase 0 ✅ · Phase 1 ✅ · Phase 2 ✅ · Phase 3 ✅ · Phase 4 ⬜ not started**
+**Phase 0 ✅ · Phase 1 ✅ · Phase 2 ✅ · Phase 3 ✅ · Phase 4 🔶 Claude's parts done, human parts pending**
 
 Repo: `https://github.com/nlehnhof/multiplayer-sdk.git`, branch `master`. Working contract and current file-by-file structure live in `CLAUDE.md` at repo root — this doc stays the narrative log of *how* the build actually went (what deviated from plan, what broke, what was learned), `CLAUDE.md` is the current-state reference.
 
@@ -68,8 +68,13 @@ Run these either as Cowork `Agent` calls with `isolation: "worktree"` (each gets
 - Ran a high-effort `/code-review` pass over `packages/` and `examples/`. One real finding: `adapter-partykit`'s `#broadcastSync()` (the per-connection loop ADR 0002 introduced) wasn't failure-isolated — a throwing `toClientView` for one player could abort the loop mid-iteration (leaving other connections on stale state) and, because it ran inside `onMessage`'s action try/catch, could misreport a successful action as rejected to the acting player.
 - Fixed: each connection's view/serialize/send in `#broadcastSync` is now independently try/caught, and it's called outside the action try/catch so it structurally can't be mistaken for an action failure. New regression test proves a later-iterated player's sync survives an earlier player's broken view. Re-verified: 15/15 adapter tests, 65/65 full workspace, and a live smoke test, all after the fix.
 
-**Phase 4 — Launch prep. ⬜ Not started.**
+**Phase 4 — Launch prep. 🔶 Claude's parts done, human parts pending.**
 `engineering:deploy-checklist` before `npm publish`. Draft the marketplace submission (Claude Code plugin directory PR, Cursor Marketplace listing) content here, but per the build plan, the actual submission review process and creator outreach are things you do by hand, not Claude.
+- Full checklist in `DEPLOY_CHECKLIST.md`, split into done-by-Claude vs. human-only items.
+- Root `README.md`, `.github/workflows/ci.yml`, and npm-publish-ready `package.json`s (repository/homepage/bugs/keywords/publishConfig, versions bumped `0.0.1` → `0.1.0`) for the three publishable packages, verified with `npm publish --dry-run` (which caught `packages/core` having no `README.md` at all — fixed).
+- Caught while reviewing for launch: both plugin manifests (`plugin-claude-code`, `plugin-cursor`) and the MCP server's own `get_room_definition_guide` tool content had shipped *before* ADR 0002 and never got updated — they were telling an agent to write privacy-incapable `RoomDefinition`s. Fixed in all three, with the MCP server's guide's test coverage extended to check for the new content. Lesson: a "done" package can go stale when a later architectural decision changes the contract it depends on — worth a deliberate check whenever an ADR is added or amended, not just when directly touching the affected files.
+- npm registry checked (read-only `npm view`) to confirm the `@multiplayer-agent-sdk` package names aren't already taken — they aren't.
+- Did not run `npm publish`, open the `claude-plugins-official` PR, or submit to Cursor's Marketplace — all require the human's credentials/account per the build plan.
 
 ## Skill vs. subagent — the rule of thumb
 

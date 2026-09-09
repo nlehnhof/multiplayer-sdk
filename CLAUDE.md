@@ -8,7 +8,7 @@ Full context lives in two docs at repo root — read them before making architec
 
 This file is the working contract for whoever (human or Claude) picks up work in this repo. Keep it under 2000 words — condense before adding.
 
-## Status: Phase 0-3 complete, Phase 4 (launch prep) not started
+## Status: Phase 0-3 complete, Phase 4 (launch prep) — Claude's parts done, human parts pending
 
 Adapter interface, core SDK, PartyKit adapter, MCP server skeleton, both plugin manifests, and all 3 reference games exist, are tested (unit tests + live smoke tests against a real `partykit dev` server, not just mocks), and are merged to `master`. See `orchestration-plan.md` for the phase-by-phase log.
 
@@ -19,7 +19,7 @@ Adapter interface, core SDK, PartyKit adapter, MCP server skeleton, both plugin 
 - Core SDK + PartyKit adapter (Phase 1) — **done**
 - MCP server + Claude Code/Cursor plugin manifests — **done** (skeleton-level; see their READMEs for flagged unknowns)
 - All 3 reference games: tic-tac-toe, card-game (War), trivia — **done**
-- Published to npm; submitted to Claude Code and Cursor marketplaces — **not started** (Phase 4, and marketplace submission is explicitly a human task)
+- Published to npm; submitted to Claude Code and Cursor marketplaces — **prep done, publish/submit not done**: see `DEPLOY_CHECKLIST.md` (actual `npm publish` and marketplace submission need your credentials/account, not Claude's)
 
 **Explicitly out of scope — do not build without asking first:**
 - Colyseus adapter, Supabase Realtime adapter (framed in the build plan as "swappable later," not MVP-blocking)
@@ -61,7 +61,7 @@ Any `RoomDefinition` with hidden information (hands, secret roles, unrevealed an
 2. **Phase 1 — Core SDK + PartyKit adapter.** ✅ Done, live-verified.
 3. **Phase 2 — Parallelized MVP packages.** ✅ Done via 4 worktree agents (3 games + MCP/plugins), each merged and re-verified on `master` after merge, including fixing two real bugs a subagent's own testing had missed (a smoke-test race in card-game, a stale-room bug in trivia's smoke test) — don't accept a subagent's "tests pass" without independently re-running them post-merge.
 4. **Phase 3 — Testing & review.** ✅ Done. A high-effort `/code-review` pass over `packages/` and `examples/` found one real bug (a per-connection broadcast failure-isolation gap in the adapter, introduced by ADR 0002) — fixed, with a regression test, and re-verified across the full workspace plus a live smoke test.
-5. **Phase 4 — Launch prep.** Not started. Deploy checklist before `npm publish`; marketplace submission content can be drafted here, but the actual submission and creator outreach happen outside Claude.
+5. **Phase 4 — Launch prep.** ✅ Claude's parts done — see `DEPLOY_CHECKLIST.md`. Root `README.md`, CI workflow, npm-publish-ready `package.json`s (versions bumped to `0.1.0`, verified via `npm publish --dry-run`), and both plugin manifests' content updated for ADR 0002 (they'd shipped before that ADR and were stale — the MCP server's own guidance tool had the same gap, also fixed). Actual `npm publish`, marketplace submission, demo video, and creator outreach remain human tasks.
 
 Full detail in `orchestration-plan.md` — this is a pointer, not a replacement.
 
