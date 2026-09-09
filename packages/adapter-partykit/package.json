@@ -1,0 +1,25 @@
+{
+  "name": "@multiplayer-agent-sdk/adapter-partykit",
+  "version": "0.0.1",
+  "description": "PartyKit backend adapter for the Multiplayer Agent SDK.",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@multiplayer-agent-sdk/core": "0.0.1",
+    "partysocket": "^1.3.0"
+  },
+  "peerDependencies": {
+    "partykit": "^0.0.115"
+  },
+  "devDependencies": {
+    "partykit": "^0.0.115"
+  }
+}
