@@ -5,7 +5,8 @@
   "description": "Add real-time multiplayer to an existing game via a swappable realtime-backend adapter, built for AI coding agents.",
   "license": "MIT",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "examples/*"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
