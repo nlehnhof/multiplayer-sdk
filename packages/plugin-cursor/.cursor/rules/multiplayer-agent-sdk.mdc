@@ -1,0 +1,60 @@
+---
+description: Add real-time multiplayer to an existing game using the Multiplayer Agent SDK (RoomDefinition + a swappable realtime-backend adapter, PartyKit by default). Apply when the user asks to add multiplayer, networking, or real-time sync to a game, or references the Multiplayer Agent SDK / RoomDefinition.
+alwaysApply: false
+---
+
+# Add multiplayer to a game with the Multiplayer Agent SDK
+
+This SDK adds real-time multiplayer to a game that already exists, by
+wrapping an existing realtime backend (PartyKit by default) instead of
+hosting infrastructure itself. It targets 2-6 player turn-based or casual
+games (card games, trivia, tic-tac-toe, party games) — not
+latency-sensitive competitive/action games.
+
+## 1. Get the authoritative `RoomDefinition` contract
+
+Do not guess this shape from memory:
+- If the `@multiplayer-agent-sdk/mcp-server` MCP server is configured,
+  call its `get_room_definition_guide` tool for the verbatim
+  `RoomDefinition`/`PlayerInfo`/`RoomOptions` interfaces plus a worked
+  example, and `list_adapters` to see which backend adapters are actually
+  available (at MVP, only `partykit`).
+- Otherwise, read `adr/0001-adapter-interface.md` and
+  `packages/core/src/types.ts` in the `multiplayer-agent-sdk` repo.
+
+## 2. Write one `RoomDefinition` for the game's rules
+
+```typescript
+export interface RoomDefinition<TState, TAction, TMeta = unknown> {
+  createState(): TState;
+  onJoin(state: TState, player: PlayerInfo<TMeta>): TState;   // throw to reject the join
+  onLeave(state: TState, player: PlayerInfo<TMeta>): TState;
+  onAction(state: TState, action: TAction, player: PlayerInfo<TMeta>): TState; // throw to reject the action
+  options?: RoomOptions; // maxPlayers, idleTimeoutMs
+}
+```
+
+It is server-authoritative and reducer-shaped, written once, and never
+imports an adapter. Translate the game's existing local state and move
+logic into `createState`/`onJoin`/`onLeave`/`onAction`, throwing to reject
+an invalid join or illegal move.
+
+**Hard constraint:** `TState` and `TAction` must be JSON-serializable — no
+functions, class instances, `Map`, or `Set`.
+
+## 3. Wire it to `@multiplayer-agent-sdk/adapter-partykit`
+
+- Server: `createPartyKitServer(roomDefinition)` returns a deployable
+  PartyKit `Party.Server` class.
+- Client: `connectPartyKitClient(config)` returns a `RoomConnection`
+  (`state`, `presence`, `send`, `onStateChange`, `onPresenceChange`,
+  `disconnect`) for the game's existing UI to read from and dispatch to.
+
+See `packages/adapter-partykit/README.md` in the SDK repo for exact call
+signatures and local-dev setup.
+
+## Non-goals
+
+No matchmaking/lobby/discovery, no reconnection beyond a basic reconnect,
+no state diffing — out of scope for this SDK (see
+`adr/0001-adapter-interface.md`, "Non-goals (MVP)").

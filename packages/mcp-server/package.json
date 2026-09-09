@@ -1,0 +1,25 @@
+{
+  "name": "@multiplayer-agent-sdk/mcp-server",
+  "version": "0.0.1",
+  "description": "MCP server exposing grounded, read-only guidance about the Multiplayer Agent SDK's adapter interface to coding agents (Claude Code, Cursor, etc).",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "multiplayer-agent-sdk-mcp": "dist/index.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@multiplayer-agent-sdk/core": "0.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.2"
+  }
+}
