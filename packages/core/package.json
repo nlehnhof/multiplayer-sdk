@@ -1,12 +1,25 @@
 {
   "name": "@multiplayer-agent-sdk/core",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Backend-agnostic types and room engine for the Multiplayer Agent SDK.",
   "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": ["dist"],
+  "author": "nlehnhof",
+  "homepage": "https://github.com/nlehnhof/multiplayer-sdk/tree/master/packages/core#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nlehnhof/multiplayer-sdk.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/nlehnhof/multiplayer-sdk/issues"
+  },
+  "keywords": ["multiplayer", "realtime", "game", "sdk", "ai-agent", "claude-code", "cursor"],
+  "engines": { "node": ">=18" },
+  "publishConfig": { "access": "public" },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts",
     "test": "vitest run",
