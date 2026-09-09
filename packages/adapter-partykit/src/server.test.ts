@@ -19,46 +19,58 @@ function definition(
   };
 }
 
-function fakeConnection(id: string) {
-  return { id, send: vi.fn(), close: vi.fn() };
+// The real PartyKit runtime already knows about a Connection by the time
+// onConnect fires and answers room.getConnection(id) for it — so the fake
+// room needs connections registered up front, not added reactively.
+function fakeRoom() {
+  const connections = new Map<string, { id: string; send: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn> }>();
+  return {
+    connections,
+    getConnection: vi.fn((id: string) => connections.get(id)),
+  };
 }
 
-function fakeRoom() {
-  return { broadcast: vi.fn() };
+function fakeConnection(room: ReturnType<typeof fakeRoom>, id: string) {
+  const conn = { id, send: vi.fn(), close: vi.fn() };
+  room.connections.set(id, conn);
+  return conn;
 }
 
 function fakeCtx(playerId: string) {
   return { request: { url: `https://example.com/parties/main/room1?playerId=${playerId}` } };
 }
 
+function lastSync(conn: { send: ReturnType<typeof vi.fn> }) {
+  const call = conn.send.mock.calls.at(-1)!;
+  return JSON.parse(call[0] as string);
+}
+
 describe('createPartyKitServer', () => {
-  it('broadcasts a sync message on connect', () => {
+  it('sends the connecting client a sync message', () => {
     const Server = createPartyKitServer(definition());
     const room = fakeRoom();
     const server = new Server(room as never);
-    const conn = fakeConnection('conn-1');
+    const conn = fakeConnection(room, 'conn-1');
 
     server.onConnect!(conn as never, fakeCtx('p1') as never);
 
-    expect(room.broadcast).toHaveBeenCalledTimes(1);
-    const [payload] = room.broadcast.mock.calls[0]!;
-    expect(JSON.parse(payload as string)).toMatchObject({ type: 'sync', state: { count: 0 } });
+    expect(conn.send).toHaveBeenCalledTimes(1);
+    expect(lastSync(conn)).toMatchObject({ type: 'sync', state: { count: 0 } });
   });
 
-  it('applies actions from the sender and rebroadcasts state', () => {
+  it('applies actions from the sender and sends updated state to connected clients', () => {
     const Server = createPartyKitServer(definition());
     const room = fakeRoom();
     const server = new Server(room as never);
-    const conn = fakeConnection('conn-1');
+    const conn = fakeConnection(room, 'conn-1');
     server.onConnect!(conn as never, fakeCtx('p1') as never);
 
     server.onMessage!(JSON.stringify({ type: 'action', action: { type: 'increment' } }), conn as never);
 
-    const lastCall = room.broadcast.mock.calls.at(-1)!;
-    expect(JSON.parse(lastCall[0] as string)).toMatchObject({ type: 'sync', state: { count: 1 } });
+    expect(lastSync(conn)).toMatchObject({ type: 'sync', state: { count: 1 } });
   });
 
-  it('sends an error back to the sender when an action throws, without rebroadcasting', () => {
+  it('sends an error back to the sender when an action throws, without a new sync', () => {
     const def = definition({
       onAction: () => {
         throw new Error('nope');
@@ -67,13 +79,12 @@ describe('createPartyKitServer', () => {
     const Server = createPartyKitServer(def);
     const room = fakeRoom();
     const server = new Server(room as never);
-    const conn = fakeConnection('conn-1');
+    const conn = fakeConnection(room, 'conn-1');
     server.onConnect!(conn as never, fakeCtx('p1') as never);
-    room.broadcast.mockClear();
+    conn.send.mockClear();
 
     server.onMessage!(JSON.stringify({ type: 'action', action: { type: 'increment' } }), conn as never);
 
-    expect(room.broadcast).not.toHaveBeenCalled();
     expect(conn.send).toHaveBeenCalledTimes(1);
     expect(JSON.parse(conn.send.mock.calls[0]![0] as string)).toEqual({ type: 'error', message: 'nope' });
   });
@@ -82,24 +93,28 @@ describe('createPartyKitServer', () => {
     const Server = createPartyKitServer(definition());
     const room = fakeRoom();
     const server = new Server(room as never);
-    const conn = fakeConnection('stray');
+    const conn = fakeConnection(room, 'stray');
 
     server.onMessage!(JSON.stringify({ type: 'action', action: { type: 'increment' } }), conn as never);
 
-    expect(room.broadcast).not.toHaveBeenCalled();
+    expect(conn.send).not.toHaveBeenCalled();
   });
 
-  it('removes the player and rebroadcasts on close', () => {
+  it('removes the player and sends the remaining player updated state on close', () => {
     const Server = createPartyKitServer(definition());
     const room = fakeRoom();
     const server = new Server(room as never);
-    const conn = fakeConnection('conn-1');
-    server.onConnect!(conn as never, fakeCtx('p1') as never);
-    room.broadcast.mockClear();
+    const connA = fakeConnection(room, 'conn-a');
+    const connB = fakeConnection(room, 'conn-b');
+    server.onConnect!(connA as never, fakeCtx('a') as never);
+    server.onConnect!(connB as never, fakeCtx('b') as never);
+    connB.send.mockClear();
 
-    server.onClose!(conn as never);
+    server.onClose!(connA as never);
 
-    expect(room.broadcast).toHaveBeenCalledTimes(1);
+    expect(connB.send).toHaveBeenCalledTimes(1);
+    expect(lastSync(connB).presence).toHaveLength(1);
+    expect(lastSync(connB).presence[0]).toMatchObject({ id: 'b' });
   });
 
   it('rejects a join over maxPlayers and closes the connection', () => {
@@ -108,11 +123,38 @@ describe('createPartyKitServer', () => {
     const room = fakeRoom();
     const server = new Server(room as never);
 
-    server.onConnect!(fakeConnection('conn-1') as never, fakeCtx('p1') as never);
-    const secondConn = fakeConnection('conn-2');
+    server.onConnect!(fakeConnection(room, 'conn-1') as never, fakeCtx('p1') as never);
+    const secondConn = fakeConnection(room, 'conn-2');
     server.onConnect!(secondConn as never, fakeCtx('p2') as never);
 
     expect(secondConn.close).toHaveBeenCalledWith(4000, 'join rejected');
     expect(JSON.parse(secondConn.send.mock.calls[0]![0] as string)).toMatchObject({ type: 'error' });
+  });
+
+  it('sends each player their own toClientView projection (ADR 0002)', () => {
+    interface HiddenState {
+      secrets: Record<string, string>;
+    }
+    const def: RoomDefinition<HiddenState, never, unknown, { mine: string | undefined; othersCount: number }> = {
+      createState: () => ({ secrets: {} }),
+      onJoin: (state, player) => ({ secrets: { ...state.secrets, [player.id]: `secret-for-${player.id}` } }),
+      onLeave: (state) => state,
+      onAction: (state) => state,
+      toClientView: (state, viewerId) => ({
+        mine: state.secrets[viewerId],
+        othersCount: Object.keys(state.secrets).filter((id) => id !== viewerId).length,
+      }),
+    };
+    const Server = createPartyKitServer(def);
+    const room = fakeRoom();
+    const server = new Server(room as never);
+    const connA = fakeConnection(room, 'conn-a');
+    const connB = fakeConnection(room, 'conn-b');
+
+    server.onConnect!(connA as never, fakeCtx('a') as never);
+    server.onConnect!(connB as never, fakeCtx('b') as never);
+
+    expect(lastSync(connA).state).toEqual({ mine: 'secret-for-a', othersCount: 1 });
+    expect(lastSync(connB).state).toEqual({ mine: 'secret-for-b', othersCount: 1 });
   });
 });

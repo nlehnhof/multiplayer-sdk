@@ -13,9 +13,9 @@ export interface PartyKitClientConnectConfig<TMeta = unknown> extends ClientConn
  * server — prefer `onStateChange` over reading `.state` synchronously right
  * after calling this.
  */
-export function connectPartyKitClient<TState, TAction, TMeta = unknown>(
+export function connectPartyKitClient<TView, TAction, TMeta = unknown>(
   config: PartyKitClientConnectConfig<TMeta>
-): RoomConnection<TState, TAction, TMeta> {
+): RoomConnection<TView, TAction, TMeta> {
   if (!config.host) {
     throw new Error(
       'PartyKit adapter requires `host` (e.g. "127.0.0.1:1999" for local dev, or your deployed PartyKit host).'
@@ -32,15 +32,15 @@ export function connectPartyKitClient<TState, TAction, TMeta = unknown>(
     },
   });
 
-  let state: TState | undefined;
+  let state: TView | undefined;
   let presence: PlayerInfo<TMeta>[] = [];
-  const stateListeners = new Set<(state: TState) => void>();
+  const stateListeners = new Set<(state: TView) => void>();
   const presenceListeners = new Set<(players: PlayerInfo<TMeta>[]) => void>();
 
   socket.addEventListener('message', (event: MessageEvent) => {
     if (typeof event.data !== 'string') return;
 
-    let message: ServerToClientMessage<TState, TMeta>;
+    let message: ServerToClientMessage<TView, TMeta>;
     try {
       message = JSON.parse(event.data);
     } catch {
@@ -58,7 +58,7 @@ export function connectPartyKitClient<TState, TAction, TMeta = unknown>(
   });
 
   return {
-    get state(): TState {
+    get state(): TView {
       if (state === undefined) {
         throw new Error('Not connected yet: state is only available after the first sync message.');
       }
@@ -70,7 +70,7 @@ export function connectPartyKitClient<TState, TAction, TMeta = unknown>(
     send(action: TAction): void {
       socket.send(JSON.stringify({ type: 'action', action }));
     },
-    onStateChange(cb: (state: TState) => void): Unsubscribe {
+    onStateChange(cb: (state: TView) => void): Unsubscribe {
       stateListeners.add(cb);
       return () => stateListeners.delete(cb);
     },

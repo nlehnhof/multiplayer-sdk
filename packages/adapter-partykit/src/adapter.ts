@@ -3,13 +3,15 @@ import { createPartyKitServer } from './server.js';
 import { connectPartyKitClient, type PartyKitClientConnectConfig } from './client.js';
 
 export class PartyKitAdapter implements MultiplayerAdapter {
-  createServer<TState, TAction, TMeta = unknown>(definition: RoomDefinition<TState, TAction, TMeta>) {
+  createServer<TState, TAction, TMeta = unknown, TView = TState>(
+    definition: RoomDefinition<TState, TAction, TMeta, TView>
+  ) {
     return createPartyKitServer(definition);
   }
 
-  connectClient<TState, TAction, TMeta = unknown>(
+  connectClient<TView, TAction, TMeta = unknown>(
     config: ClientConnectConfig<TMeta> & Partial<PartyKitClientConnectConfig<TMeta>>
-  ): RoomConnection<TState, TAction, TMeta> {
+  ): RoomConnection<TView, TAction, TMeta> {
     return connectPartyKitClient(config);
   }
 }

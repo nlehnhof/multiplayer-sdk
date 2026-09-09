@@ -10,7 +10,10 @@ export class RoomEngine<TState, TAction, TMeta = unknown> {
   private state: TState;
   private readonly players = new Map<string, PlayerInfo<TMeta>>();
 
-  constructor(private readonly definition: RoomDefinition<TState, TAction, TMeta>) {
+  // TView isn't parameterized here: RoomEngine never calls toClientView, so
+  // it accepts a RoomDefinition with any view type rather than threading a
+  // TView generic through a class that has no use for it.
+  constructor(private readonly definition: RoomDefinition<TState, TAction, TMeta, any>) {
     this.state = definition.createState();
   }
 

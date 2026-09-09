@@ -10,9 +10,12 @@ import { toErrorMessage, type ActionMessage, type SyncMessage } from './protocol
  * Known MVP limitation: a player id reconnecting with a fresh connection is
  * treated as a brand-new join (RoomDefinition.onJoin runs again) — there is
  * no session-resumption. See ADR 0001, "Non-goals (MVP)".
+ *
+ * Each connection is sent its own projection of state via
+ * `definition.toClientView`, if provided — see ADR 0002.
  */
-export function createPartyKitServer<TState, TAction, TMeta = unknown>(
-  definition: RoomDefinition<TState, TAction, TMeta>
+export function createPartyKitServer<TState, TAction, TMeta = unknown, TView = TState>(
+  definition: RoomDefinition<TState, TAction, TMeta, TView>
 ) {
   // Uses `#private` fields/methods (not the `private` keyword) because TS
   // can't emit a .d.ts for an exported anonymous class with `private`
@@ -74,13 +77,21 @@ export function createPartyKitServer<TState, TAction, TMeta = unknown>(
       this.#broadcastSync();
     }
 
+    // Per-connection sends rather than one room.broadcast(): each player may
+    // see a different projection of state (ADR 0002). Presence is not
+    // per-player filtered, so it's identical across every message we send.
     #broadcastSync(): void {
-      const message: SyncMessage<TState, TMeta> = {
-        type: 'sync',
-        state: this.#engine.currentState,
-        presence: this.#engine.presence,
-      };
-      this.room.broadcast(JSON.stringify(message));
+      const state = this.#engine.currentState;
+      const presence = this.#engine.presence;
+
+      for (const [connectionId, player] of this.#playerByConnectionId) {
+        const connection = this.room.getConnection(connectionId);
+        if (!connection) continue;
+
+        const view = definition.toClientView ? definition.toClientView(state, player.id) : (state as unknown as TView);
+        const message: SyncMessage<TView, TMeta> = { type: 'sync', state: view, presence };
+        connection.send(JSON.stringify(message));
+      }
     }
   };
 }
