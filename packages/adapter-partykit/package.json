@@ -10,7 +10,9 @@
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "smoke:server": "partykit dev smoke-test/server.ts --port 1999",
+    "smoke:client": "node smoke-test/client.mjs"
   },
   "dependencies": {
     "@multiplayer-agent-sdk/core": "0.0.1",
