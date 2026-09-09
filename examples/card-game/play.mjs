@@ -23,6 +23,30 @@ function waitForSync(conn) {
   });
 }
 
+// A single flip and a fully-resolved round both broadcast as a plain "sync"
+// message, so "wait for the next sync" is ambiguous: a stale broadcast from
+// the *other* player's flip can arrive just as we start waiting and resolve
+// this promise before our own flip's round-resolution sync ever does. That
+// leaves the round genuinely unresolved, so the next flip gets rejected
+// (non-fatal 'error' message, no sync) and the script hangs forever waiting
+// on a sync that will never come. `roundsResolved` is a monotonic counter
+// bumped exactly once per resolved round (see src/room.ts), so waiting for
+// it to exceed a known baseline is unambiguous regardless of message timing.
+function waitForRoundResolved(conn, baseline) {
+  return new Promise((resolve) => {
+    if (conn.state.roundsResolved > baseline) {
+      resolve(conn.state);
+      return;
+    }
+    const unsubscribe = conn.onStateChange((state) => {
+      if (state.roundsResolved > baseline) {
+        unsubscribe();
+        resolve(state);
+      }
+    });
+  });
+}
+
 function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
@@ -51,16 +75,15 @@ async function main() {
   const t0 = Date.now();
 
   while (latest.status === 'playing' && rounds < maxRounds) {
-    // Alternate turns, waiting for a sync after each flip, so there's never
-    // a race between "alice's card landed on the table" and "the round
-    // resolved" — bob always flips second and observes the resolved state.
-    const aliceFlipSync = waitForSync(alice);
+    // Alice flips first (lands on the table, round not yet resolved — no
+    // wait needed here since bob's flip is what completes the round), then
+    // bob flips and we wait specifically for `roundsResolved` to advance,
+    // not just for "a sync" (see waitForRoundResolved for why that matters).
+    const baseline = bob.state.roundsResolved;
     alice.send({ type: 'flip' });
-    await aliceFlipSync;
-
-    const bobFlipSync = waitForSync(bob);
+    const bobFlipResolved = waitForRoundResolved(bob, baseline);
     bob.send({ type: 'flip' });
-    latest = await bobFlipSync;
+    latest = await bobFlipResolved;
     rounds++;
     if (rounds % 100 === 0) {
       console.log(`  ...round ${rounds}, alice=${latest.hands.alice.length} bob=${latest.hands.bob.length} (${Date.now() - t0}ms elapsed)`);

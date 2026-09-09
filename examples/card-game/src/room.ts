@@ -15,6 +15,14 @@ export interface WarState {
   wins: Record<string, number>;
   status: 'waiting' | 'playing' | 'finished';
   overallWinner: string | null;
+  /**
+   * Increments once per resolved round (win or tie). Exists so a client can
+   * tell "a round just resolved" apart from "the other player's single flip
+   * landed on the table" — both are broadcast as sync messages, and without
+   * a monotonic marker a client waiting on "the next sync" can catch the
+   * wrong one. See examples/card-game/play.mjs.
+   */
+  roundsResolved: number;
 }
 
 export type WarAction = { type: 'flip' };
@@ -59,6 +67,7 @@ export const roomDefinition: RoomDefinition<WarState, WarAction> = {
       wins: {},
       status: 'waiting',
       overallWinner: null,
+      roundsResolved: 0,
     };
   },
 
@@ -151,6 +160,7 @@ export const roomDefinition: RoomDefinition<WarState, WarAction> = {
       wins,
       status,
       overallWinner,
+      roundsResolved: state.roundsResolved + 1,
     };
   },
 };

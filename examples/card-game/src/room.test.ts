@@ -21,6 +21,7 @@ function makeState(overrides: Partial<WarState> = {}): WarState {
     wins: {},
     status: 'playing',
     overallWinner: null,
+    roundsResolved: 0,
     ...overrides,
   };
 }
@@ -80,6 +81,7 @@ describe('War room definition — flipping', () => {
     const final = roomDefinition.onAction(afterP1, { type: 'flip' }, player('p2'));
 
     expect(final.table).toEqual({});
+    expect(final.roundsResolved).toBe(1);
     expect(final.roundWinner).toBe('p1');
     expect(final.wins.p1).toBe(1);
     expect(final.wins.p2).toBe(0);
@@ -118,7 +120,10 @@ describe('War room definition — flipping', () => {
 
     let state = engine.currentState;
     let guard = 0;
-    while (state.status === 'playing' && guard < 200) {
+    // 200 was too tight and made this test flaky: a 2000-game simulation of
+    // this exact reducer topped out at 422 rounds (see play.mjs), so give a
+    // comfortable margin above that observed worst case.
+    while (state.status === 'playing' && guard < 2000) {
       state = engine.action('p1', { type: 'flip' });
       if (state.status !== 'playing') break;
       state = engine.action('p2', { type: 'flip' });
