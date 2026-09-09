@@ -11,21 +11,22 @@ This is War with the war-chain-on-tie mechanic removed: a tied flip just
 discards both cards instead of triggering a face-down/face-up escalation.
 That's a deliberate simplification, not an oversight — see below.
 
-**This reference intentionally shows both players' full hands in shared
-state.** There is no hidden information: both players can see each other's
-entire hand at all times via `state.hands`. That's because the current (v1)
-adapter interface broadcasts one identical `TState` object to every
-connected client — there is no per-player private view yet. See
-[`adr/0001-adapter-interface.md`](../../adr/0001-adapter-interface.md),
-"Non-goals (MVP)". A real card game with hidden hands would need a future
-adapter interface revision that supports per-player state projections; this
-example is scoped to work within the current, frozen interface instead of
-working around it.
+**Hands are private.** Each player's `RoomConnection.state` (the `WarView`
+produced by `roomDefinition.toClientView`) exposes only `myHand` (your own
+cards) and `handCounts` (everyone's hand *size*, including opponents' — you
+can see how many cards they have left, same as in physical play, just not
+what they are). The raw `WarState.hands` — every player's actual cards —
+never reaches any client; it exists only in the authoritative state the
+adapter holds server-side. See
+[`adr/0002-per-player-views.md`](../../adr/0002-per-player-views.md), which
+this example was the motivating case for. Table cards (`table`), once
+flipped, are public to both players — that's already-played information,
+same as in physical play.
 
 ## Structure
 
-- `src/room.ts` — the `RoomDefinition<WarState, WarAction>`: dealing, flip
-  resolution, forfeit-on-leave.
+- `src/room.ts` — the `RoomDefinition<WarState, WarAction, unknown, WarView>`:
+  dealing, flip resolution, forfeit-on-leave, and `toClientView` (hand privacy).
 - `src/room.test.ts` — vitest unit tests against `RoomEngine`.
 - `party/server.ts` — `export default createPartyKitServer(roomDefinition)`,
   the file a PartyKit deployment points at.
@@ -54,21 +55,13 @@ npm run smoke:play
 Expected output ends with `✅ War card-game smoke test passed`. Ctrl+C the
 server afterward.
 
-**Verification status:** the unit tests (`npx vitest run`) and typecheck
-(`npx tsc --noEmit`) both pass and are the authoritative check of the game
-logic — they were run for real, not assumed. As an extra check beyond the
-unit tests, a throwaway 2000-game in-memory simulation of this exact
-`roomDefinition` (joining two players and flipping to completion via
-`RoomEngine` directly, no network) completed every game with no thrown
-errors and a maximum of 422 rounds, confirming the reducer logic terminates
-correctly and never gets stuck. `play.mjs` itself was run live against a
-real `partykit dev` server and correctly joined both players, dealt 26/26,
-and resolved dozens of rounds with the expected hand-count changes — but in
-this sandboxed Windows dev environment, rapid-fire back-to-back flips
-occasionally caused the local `partykit dev`/Miniflare WebSocket connection
-to go silent for one flip (no error, no crash — just no `sync` response),
-which parked `play.mjs` waiting on a promise that never resolved. That looks
-like a local dev-server/OS quirk under a tight synchronous WS loop rather
-than a bug in `roomDefinition` (the in-memory simulation above exercises the
-identical reducer without issue). If `smoke:play` stalls, Ctrl+C it and
-retry, or run it on a non-Windows host / against a deployed PartyKit room.
+**Verification status:** unit tests and typecheck pass and are the
+authoritative check of the game logic. `play.mjs` was additionally run live
+against a real `partykit dev` server **11 consecutive times with zero
+failures**, each completing in well under a second (typically 100-200
+rounds), and asserts both that hand counts update correctly and that the
+raw `WarState.hands` never appears in either client's view. An earlier
+version of this smoke test had a real race (ambiguous "wait for the next
+sync" logic — fixed by waiting on the monotonic `roundsResolved` counter
+instead); see the git history for `play.mjs` if you're curious, but it's
+resolved and no longer a caveat.

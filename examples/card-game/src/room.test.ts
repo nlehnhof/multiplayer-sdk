@@ -153,3 +153,38 @@ describe('War room definition — leaving', () => {
     expect(final.overallWinner).toBeNull();
   });
 });
+
+describe('War room definition — toClientView (ADR 0002)', () => {
+  const state = makeState({
+    hands: {
+      p1: [{ rank: 10, suit: 'S' }, { rank: 9, suit: 'H' }],
+      p2: [{ rank: 5, suit: 'H' }],
+    },
+    wins: { p1: 2, p2: 1 },
+  });
+
+  it("shows the viewer their own hand in full", () => {
+    const view = roomDefinition.toClientView!(state, 'p1');
+    expect(view.myHand).toEqual([{ rank: 10, suit: 'S' }, { rank: 9, suit: 'H' }]);
+  });
+
+  it("shows only a count for every other player's hand", () => {
+    const view = roomDefinition.toClientView!(state, 'p1');
+    expect(view.handCounts).toEqual({ p1: 2, p2: 1 });
+    expect(view).not.toHaveProperty('hands');
+  });
+
+  it('is symmetric: each player sees only their own cards', () => {
+    const viewForP1 = roomDefinition.toClientView!(state, 'p1');
+    const viewForP2 = roomDefinition.toClientView!(state, 'p2');
+    expect(viewForP1.myHand).not.toEqual(viewForP2.myHand);
+    expect(viewForP2.myHand).toEqual([{ rank: 5, suit: 'H' }]);
+  });
+
+  it('passes through public fields unchanged', () => {
+    const view = roomDefinition.toClientView!(state, 'p1');
+    expect(view.wins).toEqual({ p1: 2, p2: 1 });
+    expect(view.status).toBe(state.status);
+    expect(view.roundsResolved).toBe(state.roundsResolved);
+  });
+});

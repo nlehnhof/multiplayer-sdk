@@ -27,6 +27,23 @@ export interface WarState {
 
 export type WarAction = { type: 'flip' };
 
+/**
+ * What a client actually receives (ADR 0002): your own hand in full, but
+ * everyone else's hand only as a count — hiding opponents' cards is the
+ * entire point of a card game. Table cards are already-played and public to
+ * everyone, same as in physical play.
+ */
+export interface WarView {
+  myHand: Card[];
+  handCounts: Record<string, number>;
+  table: Record<string, Card>;
+  roundWinner: string | null;
+  wins: Record<string, number>;
+  status: WarState['status'];
+  overallWinner: string | null;
+  roundsResolved: number;
+}
+
 const SUITS: Suit[] = ['S', 'H', 'D', 'C'];
 
 function createDeck(): Card[] {
@@ -51,12 +68,11 @@ function shuffle<T>(items: T[]): T[] {
 
 /**
  * A deliberately simplified 2-player "War": no war-chain-on-tie mechanic
- * (a tied flip just discards both cards) because the v1 adapter interface
- * broadcasts one shared TState to every client with no per-player private
- * view — see adr/0001-adapter-interface.md, "Non-goals (MVP)". Both
- * players' full hands are visible to both players in this reference.
+ * (a tied flip just discards both cards), documented for simplicity, not
+ * because the interface can't express it. Hands ARE private per-player —
+ * see `toClientView` below and adr/0002-per-player-views.md.
  */
-export const roomDefinition: RoomDefinition<WarState, WarAction> = {
+export const roomDefinition: RoomDefinition<WarState, WarAction, unknown, WarView> = {
   options: { maxPlayers: 2 },
 
   createState(): WarState {
@@ -161,6 +177,23 @@ export const roomDefinition: RoomDefinition<WarState, WarAction> = {
       status,
       overallWinner,
       roundsResolved: state.roundsResolved + 1,
+    };
+  },
+
+  toClientView(state: WarState, viewerId: string): WarView {
+    const handCounts: Record<string, number> = {};
+    for (const [id, hand] of Object.entries(state.hands)) {
+      handCounts[id] = hand.length;
+    }
+    return {
+      myHand: state.hands[viewerId] ?? [],
+      handCounts,
+      table: state.table,
+      roundWinner: state.roundWinner,
+      wins: state.wins,
+      status: state.status,
+      overallWinner: state.overallWinner,
+      roundsResolved: state.roundsResolved,
     };
   },
 };

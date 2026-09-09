@@ -62,8 +62,10 @@ async function main() {
   await waitForSync(bob);
   console.log('bob joined, status:', bob.state.status);
   assert(bob.state.status === 'playing', 'game should start once both players have joined');
-  assert(bob.state.hands.alice.length === 26, 'alice should have 26 cards');
-  assert(bob.state.hands.bob.length === 26, 'bob should have 26 cards');
+  assert(bob.state.handCounts.alice === 26, 'alice should have 26 cards');
+  assert(bob.state.handCounts.bob === 26, 'bob should have 26 cards');
+  assert(bob.state.myHand.length === 26, "bob's own hand should be visible to bob");
+  assert(!('hands' in bob.state), 'the raw shared WarState.hands must not reach the client (ADR 0002)');
 
   let latest = bob.state;
   let rounds = 0;
@@ -86,7 +88,7 @@ async function main() {
     latest = await bobFlipResolved;
     rounds++;
     if (rounds % 100 === 0) {
-      console.log(`  ...round ${rounds}, alice=${latest.hands.alice.length} bob=${latest.hands.bob.length} (${Date.now() - t0}ms elapsed)`);
+      console.log(`  ...round ${rounds}, alice=${latest.handCounts.alice} bob=${latest.handCounts.bob} (${Date.now() - t0}ms elapsed)`);
     }
   }
 
@@ -100,9 +102,9 @@ async function main() {
   );
 
   if (latest.overallWinner === 'alice') {
-    assert(latest.hands.bob.length === 0, 'losing hand (bob) should be empty');
+    assert(latest.handCounts.bob === 0, 'losing hand (bob) should be empty');
   } else if (latest.overallWinner === 'bob') {
-    assert(latest.hands.alice.length === 0, 'losing hand (alice) should be empty');
+    assert(latest.handCounts.alice === 0, 'losing hand (alice) should be empty');
   }
 
   alice.disconnect();
