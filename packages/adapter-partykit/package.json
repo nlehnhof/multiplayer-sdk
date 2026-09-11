@@ -1,6 +1,6 @@
 {
   "name": "@multiplayer-agent-sdk/adapter-partykit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "PartyKit backend adapter for the Multiplayer Agent SDK.",
   "license": "MIT",
   "type": "module",
@@ -28,7 +28,7 @@
     "smoke:client": "node smoke-test/client.mjs"
   },
   "dependencies": {
-    "@multiplayer-agent-sdk/core": "0.1.0",
+    "@multiplayer-agent-sdk/core": "0.1.1",
     "partysocket": "^1.3.0"
   },
   "peerDependencies": {
