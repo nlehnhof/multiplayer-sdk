@@ -10,14 +10,9 @@ Per `CLAUDE.md`/`orchestration-plan.md`: Phase 4 is launch prep. This tracks wha
 - [x] `npm publish --dry-run` run for all three — tarball contents inspected and correct (`dist/`, `README.md`, `package.json`; no source, no test files, no `node_modules`).
 - [x] Versions bumped from the placeholder `0.0.1` to `0.1.0` for the first real release candidate, kept in sync everywhere they're referenced (each package's own `package.json`, the internal `@multiplayer-agent-sdk/core` dependency in `adapter-partykit`/`mcp-server`, and the three example games' dependencies on `core`/`adapter-partykit`).
 - [x] `npm view` confirms `@multiplayer-agent-sdk/core`, `adapter-partykit`, and `mcp-server` are not already taken on the public registry (all 404 — available).
-- ⬜ **Human:** the `@multiplayer-agent-sdk` npm scope itself needs to exist and be owned by your npm account before any of these can actually publish (npm scopes are created implicitly by your account on first publish, or explicitly as an npm Org — either way this requires your logged-in npm session, not something Claude can do).
-- ⬜ **Human:** `npm login`, then publish **in dependency order** — `core` first, then `adapter-partykit` and `mcp-server` (both depend on `core`; once published, they resolve it from the real registry, not the local workspace symlink):
-  ```bash
-  cd packages/core && npm publish --access public
-  cd ../adapter-partykit && npm publish --access public
-  cd ../mcp-server && npm publish --access public
-  ```
-- ⬜ **Human:** tag a matching git release (`git tag v0.1.0 && git push --tags`) once published, optionally a GitHub release with notes.
+- [x] **Human:** created the `@multiplayer-agent-sdk` npm org/scope.
+- [x] **Human:** logged in and published all three packages (`core`, `adapter-partykit`, `mcp-server`) to the public registry at `0.1.0`.
+- [x] Tagged the matching git release: `v0.1.0`, pushed to `origin`. Optionally still open: a GitHub release with notes.
 
 ## Repo polish
 
