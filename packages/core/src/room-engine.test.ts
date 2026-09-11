@@ -76,4 +76,46 @@ describe('RoomEngine', () => {
     engine.join(player('p1'));
     expect(() => engine.join(player('p2'))).toThrow(/room is full/i);
   });
+
+  describe('snapshot/restore', () => {
+    it('round-trips state and presence through a fresh instance', () => {
+      const engine = new RoomEngine(counterDefinition());
+      engine.join(player('p1'));
+      engine.join(player('p2'));
+      engine.action('p1', { type: 'increment' });
+
+      const restored = new RoomEngine(counterDefinition(), engine.snapshot());
+
+      expect(restored.currentState).toEqual(engine.currentState);
+      expect(restored.presence.map((p) => p.id)).toEqual(['p1', 'p2']);
+    });
+
+    it('a restored instance still validates actions against the restored player list', () => {
+      const engine = new RoomEngine(counterDefinition());
+      engine.join(player('p1'));
+
+      const restored = new RoomEngine(counterDefinition(), engine.snapshot());
+
+      // Known player: works.
+      restored.action('p1', { type: 'increment' });
+      expect(restored.currentState.count).toBe(1);
+      // Unknown player: still rejected — restore didn't silently accept everyone.
+      expect(() => restored.action('ghost', { type: 'increment' })).toThrow(/unknown player/i);
+    });
+
+    it('a restored instance still enforces maxPlayers against the restored roster', () => {
+      const engine = new RoomEngine(counterDefinition(1));
+      engine.join(player('p1'));
+
+      const restored = new RoomEngine(counterDefinition(1), engine.snapshot());
+
+      expect(() => restored.join(player('p2'))).toThrow(/room is full/i);
+    });
+
+    it('without a restore argument, behaves exactly as before (backward compatible)', () => {
+      const engine = new RoomEngine(counterDefinition());
+      expect(engine.currentState).toEqual({ count: 0, players: [] });
+      expect(engine.presence).toEqual([]);
+    });
+  });
 });

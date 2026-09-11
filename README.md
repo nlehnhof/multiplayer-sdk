@@ -72,6 +72,7 @@ By default every client sees the same state. Add `toClientView(state, viewerId)`
 The adapter interface and its design decisions are recorded as ADRs:
 - [ADR 0001 — Backend Adapter Interface](adr/0001-adapter-interface.md)
 - [ADR 0002 — Per-Player State Views](adr/0002-per-player-views.md)
+- [ADR 0003 — Durable State Persistence Across Hibernation](adr/0003-durable-state-persistence.md)
 
 [`CLAUDE.md`](CLAUDE.md) is the working contract for this repo (scope, conventions, build order) if you're picking up development here.
 
