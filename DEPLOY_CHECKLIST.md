@@ -19,7 +19,7 @@ Per `CLAUDE.md`/`orchestration-plan.md`: Phase 4 is launch prep. This tracks wha
 - [x] Root `README.md` (quickstart, package table, reference games, architecture links, status).
 - [x] `LICENSE` (MIT).
 - [x] `.github/workflows/ci.yml` — runs `typecheck`/`test`/`build` across all workspaces on push/PR to `master`. (Live smoke tests, which need a running `partykit dev` process, are intentionally not automated in CI yet — they're the manual verification step documented in each package/example's README.)
-- ⬜ **Human:** set the GitHub repo's description and topics (Settings → General) to match the npm keywords, for discoverability — a GitHub-side setting Claude didn't touch.
+- [x] **Human:** set the GitHub repo's description and topics (Settings → General) to match the npm keywords, for discoverability.
 
 ## Claude Code plugin directory (`packages/plugin-claude-code`)
 
